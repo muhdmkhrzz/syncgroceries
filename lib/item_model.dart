@@ -2,27 +2,30 @@ class GroceryItem {
   final String id;
   final String name;
   final String description;
-  final int quantity; // Add this field
+  final int quantity;
   final bool isDone;
   final String userId;
+  final bool isPending; // NEW: Track if the item is only on the local device
 
   GroceryItem({
     required this.id,
     required this.name,
     this.description = "",
-    required this.quantity, // Add this
+    required this.quantity,
     this.isDone = false,
     required this.userId,
+    this.isPending = false, // Default to false
   });
 
-  factory GroceryItem.fromMap(String id, Map<String, dynamic> map) {
+  factory GroceryItem.fromMap(String id, Map<String, dynamic> map, {bool isPending = false}) {
     return GroceryItem(
       id: id,
       name: map['name'] ?? '',
       description: map['description'] ?? '',
-      quantity: map['quantity'] ?? 1, // Default to 1 if missing
+      quantity: map['quantity'] ?? 1,
       isDone: map['isDone'] ?? false,
       userId: map['userId'] ?? '',
+      isPending: isPending, // Pass the metadata state here
     );
   }
 }
