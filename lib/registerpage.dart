@@ -16,16 +16,23 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
 
+  // Colors matching the GroceryShare interface
+  final Color backgroundColor = const Color(0xFF0F1720);
+  final Color inputFillColor = const Color(0xFF1A242E);
+  final Color accentColor = Colors.blue;
+
   Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        final userCredential = await authService.value.createAccount(
+        // Using your existing AuthService logic
+        await authService.value.createAccount(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
           username: _usernameController.text.trim(),
         );
 
+        // Update the display name
         await authService.value.updateUsername(
           username: _usernameController.text.trim(),
         );
@@ -56,132 +63,140 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = Colors.green.shade100;
-    final textColor = Colors.black;
-    final buttonColor = const Color.fromARGB(255, 229, 229, 229);
-    final buttonTextColor = Colors.black;
-    final inputColor = Colors.white;
-    final appBarColor = const Color.fromARGB(111, 33, 64, 101).withOpacity(0.85);
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Register'),
-        backgroundColor: appBarColor,
-        foregroundColor: Colors.white,
-      ),
       backgroundColor: backgroundColor,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.green.shade100, Colors.green.shade50],
-          ),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Image.asset('assets/icon.png', height: 150, width: 150),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Welcome! Start Writing Your Journey',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Create Your Diary Sync Account',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 30),
-                          SizedBox(
-                            width: 350,
-                            child: TextFormField(
-                              controller: _usernameController,
-                              decoration: InputDecoration(
-                                labelText: 'Username',
-                                labelStyle: TextStyle(color: textColor.withOpacity(0.7)),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(50.0)),
-                                fillColor: inputColor,
-                                filled: true,
-                              ),
-                              style: TextStyle(color: textColor),
-                              validator: (value) => value == null || value.isEmpty ? 'Enter username' : null,
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          SizedBox(
-                            width: 350,
-                            child: TextFormField(
-                              controller: _emailController,
-                              decoration: InputDecoration(
-                                labelText: 'Email',
-                                labelStyle: TextStyle(color: textColor.withOpacity(0.7)),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(50.0)),
-                                fillColor: inputColor,
-                                filled: true,
-                              ),
-                              style: TextStyle(color: textColor),
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) return 'Enter email';
-                                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Enter a valid email';
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          SizedBox(
-                            width: 350,
-                            child: TextFormField(
-                              controller: _passwordController,
-                              obscureText: true,
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                labelStyle: TextStyle(color: textColor.withOpacity(0.7)),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(50.0)),
-                                fillColor: inputColor,
-                                filled: true,
-                              ),
-                              style: TextStyle(color: textColor),
-                              validator: (value) => value == null || value.isEmpty ? 'Enter password' : null,
-                            ),
-                          ),
-                          const SizedBox(height: 25),
-                          SizedBox(
-                            width: 300,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleRegister,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50.0)),
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                backgroundColor: buttonColor,
-                                foregroundColor: buttonTextColor,
-                              ),
-                              child: _isLoading
-                                  ? const CircularProgressIndicator()
-                                  : const Text('Register', style: TextStyle(fontSize: 16)),
-                            ),
-                          ),
-                        ],
-                      ),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.blue),
+                const SizedBox(height: 30),
+                const Text(
+                  "Create Account",
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "Join the shared grocery experience",
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 40),
+                
+                // Username Field
+                _buildTextField(
+                  controller: _usernameController,
+                  hint: "Username",
+                  icon: Icons.person_outline,
+                  validator: (value) => value == null || value.isEmpty ? 'Enter username' : null,
+                ),
+                const SizedBox(height: 15),
+
+                // Email Field
+                _buildTextField(
+                  controller: _emailController,
+                  hint: "Email",
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Enter email';
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Enter a valid email';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 15),
+
+                // Password Field
+                _buildTextField(
+                  controller: _passwordController,
+                  hint: "Password",
+                  icon: Icons.lock_outline,
+                  isPassword: true,
+                  validator: (value) => value == null || value.isEmpty ? 'Enter password' : null,
+                ),
+                
+                const SizedBox(height: 40),
+
+                // Register Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleRegister,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      elevation: 0,
                     ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            "Create My Account",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
                   ),
                 ),
-              ),
-            );
-          },
+                
+                const SizedBox(height: 20),
+                
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Already have an account? Log In",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white),
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+        prefixIcon: Icon(icon, color: Colors.grey, size: 20),
+        filled: true,
+        fillColor: inputFillColor,
+        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.white10, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: accentColor.withOpacity(0.5), width: 1),
         ),
       ),
     );
