@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
+import 'dart:math';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -9,10 +12,114 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // Mock states for switches
   bool pushNotifications = true;
   bool hapticFeedback = true;
   bool darkMode = true;
+  bool _isLoading = false;
+
+  // --- JOIN HOUSEHOLD ---
+  void _showJoinHouseholdDialog() {
+    final TextEditingController codeController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A242E),
+        title: const Text("Join Household", style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: codeController,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: "Enter 6-digit code",
+            hintStyle: TextStyle(color: Colors.grey),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              final code = codeController.text.trim();
+              final query = await FirebaseFirestore.instance
+                  .collection('households')
+                  .where('inviteCode', isEqualTo: code)
+                  .limit(1)
+                  .get();
+
+              if (query.docs.isNotEmpty) {
+                final householdId = query.docs.first.id;
+                final userId = authService.value.currentUser?.uid;
+
+                // Update: Add to the array of householdIds
+                await FirebaseFirestore.instance.collection('users').doc(userId).update({
+                  'householdIds': FieldValue.arrayUnion([householdId]),
+                  'currentHouseholdId': householdId, 
+                });
+                
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Joined successfully!")));
+                }
+              }
+            },
+            child: const Text("Join"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- GENERATE NEW HOUSEHOLD ---
+  Future<void> _generateNewHousehold() async {
+    final user = authService.value.currentUser;
+    if (user == null) return;
+    setState(() => _isLoading = true);
+
+    try {
+      String newInviteCode = (Random().nextInt(900000) + 100000).toString();
+      DocumentReference householdRef = await FirebaseFirestore.instance.collection('households').add({
+        'inviteCode': newInviteCode,
+        'createdBy': user.uid,
+        'createdAt': FieldValue.serverTimestamp(),
+        'name': "Home ${newInviteCode.substring(0,3)}",
+      });
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'householdIds': FieldValue.arrayUnion([householdRef.id]),
+        'currentHouseholdId': householdRef.id,
+      }, SetOptions(merge: true)); // Use merge to ensure the document is created/updated safely
+
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Created! Code: $newInviteCode")));
+    } catch (e) {
+      debugPrint("Error: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- LEAVE HOUSEHOLD ---
+  Future<void> _leaveHousehold(String householdId) async {
+    final userId = authService.value.currentUser?.uid;
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'householdIds': FieldValue.arrayRemove([householdId]),
+    });
+    
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final data = userDoc.data() as Map<String, dynamic>?;
+    List ids = (data != null && data.containsKey('householdIds')) ? data['householdIds'] : [];
+    
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'currentHouseholdId': ids.isNotEmpty ? ids.first : "",
+    });
+  }
+
+  // --- SWITCH ACTIVE LIST ---
+  void _switchList(String householdId) {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(authService.value.currentUser?.uid)
+        .update({'currentHouseholdId': householdId});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,16 +128,9 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1720),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Settings",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        backgroundColor: Colors.transparent, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20), onPressed: () => Navigator.pop(context)),
+        title: const Text("Settings", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -39,183 +139,131 @@ class _SettingsPageState extends State<SettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 20),
-            
-            // --- PROFILE HEADER ---
-            Row(
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      height: 80,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/profile_placeholder.png'), // Replace with user image if available
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF0F1720), width: 2),
-                        ),
-                        child: const Text("PRO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 15),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user?.displayName ?? "User Name",
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    Text(
-                      user?.email ?? "email@example.com",
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: const [
-                        Text("Edit Profile", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600)),
-                        SizedBox(width: 5),
-                        Icon(Icons.edit, color: Colors.blue, size: 14),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
+            _buildProfileHeader(user),
             const SizedBox(height: 30),
 
-            // --- HOUSEHOLD & COLLAB ---
-            _sectionHeader("HOUSEHOLD & COLLAB"),
-            _buildSettingsGroup([
-              _buildListTile(Icons.people_alt_rounded, "Manage Household", showArrow: true, iconBgColor: Colors.blue.withOpacity(0.2)),
-              _buildListTile(Icons.person_add_alt_1_rounded, "Invite Partner", trailingText: "Free", showArrow: true, iconBgColor: Colors.blue.withOpacity(0.2)),
-            ]),
+            _sectionHeader("YOUR HOUSEHOLDS"),
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').doc(user?.uid).snapshots(),
+              builder: (context, userSnapshot) {
+                if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                  return const LinearProgressIndicator();
+                }
+                
+                // FIXED: Safe check for householdIds field
+                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                List householdIds = (userData != null && userData.containsKey('householdIds')) 
+                    ? userData['householdIds'] 
+                    : [];
+                String currentId = (userData != null && userData.containsKey('currentHouseholdId')) 
+                    ? userData['currentHouseholdId'] 
+                    : "";
+
+                return Column(
+                  children: [
+                    _buildSettingsGroup([
+                      ...householdIds.map((id) => _buildHouseholdTile(id, currentId)),
+                      GestureDetector(
+                        onTap: _isLoading ? null : _generateNewHousehold,
+                        child: _buildListTile(Icons.add_home_rounded, "Create New List", iconBgColor: Colors.green.withOpacity(0.2)),
+                      ),
+                      GestureDetector(
+                        onTap: _showJoinHouseholdDialog,
+                        child: _buildListTile(Icons.group_add_rounded, "Join Another Household", iconBgColor: Colors.blue.withOpacity(0.2)),
+                      ),
+                    ]),
+                  ],
+                );
+              },
+            ),
 
             const SizedBox(height: 25),
-
-            // --- PREFERENCES ---
             _sectionHeader("PREFERENCES"),
             _buildSettingsGroup([
               _buildSwitchTile(Icons.notifications_rounded, "Push Notifications", pushNotifications, (val) => setState(() => pushNotifications = val), iconBgColor: Colors.red.withOpacity(0.15)),
-              _buildSwitchTile(Icons.vibration_rounded, "Haptic Feedback", hapticFeedback, (val) => setState(() => hapticFeedback = val), iconBgColor: Colors.orange.withOpacity(0.15)),
               _buildSwitchTile(Icons.dark_mode_rounded, "Dark Mode", darkMode, (val) => setState(() => darkMode = val), iconBgColor: Colors.indigo.withOpacity(0.15)),
             ]),
 
-            const SizedBox(height: 25),
-
-            // --- DATA & SYNC ---
-            _sectionHeader("DATA & SYNC"),
-            _buildSettingsGroup([
-              _buildListTile(Icons.sync_rounded, "Sync Status", trailingText: "Up to date", isSyncStatus: true, iconBgColor: Colors.teal.withOpacity(0.15)),
-              _buildListTile(Icons.cleaning_services_rounded, "Clear Cache", subtitle: "Free up local space", showArrow: true, iconBgColor: Colors.grey.withOpacity(0.15)),
-            ]),
-
             const SizedBox(height: 40),
-
-            // --- LOGOUT BUTTON ---
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: OutlinedButton(
-                onPressed: () async {
-                  await authService.value.signOut();
-                  if (mounted) Navigator.pop(context);
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF1E1E1E)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  backgroundColor: const Color(0xFF1A1A1A).withOpacity(0.5),
-                ),
-                child: const Text("Log Out", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-            ),
-            
-            const SizedBox(height: 20),
-            const Center(
-              child: Text(
-                "GroceryShare v2.4.1 (Build 204)",
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ),
-            const SizedBox(height: 30),
+            _buildLogoutButton(),
           ],
         ),
       ),
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 10),
-      child: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+  Widget _buildHouseholdTile(String householdId, String activeId) {
+    bool isActive = householdId == activeId;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('households').doc(householdId).snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox();
+        }
+        
+        final data = snapshot.data!.data() as Map<String, dynamic>?;
+        String name = data?['name'] ?? "Loading...";
+        String code = data?['inviteCode'] ?? "------";
+
+        return ListTile(
+          onTap: () => _switchList(householdId),
+          leading: Icon(isActive ? Icons.radio_button_checked : Icons.radio_button_off, color: isActive ? Colors.blue : Colors.grey),
+          title: Text(name, style: TextStyle(color: Colors.white, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+          subtitle: Text("Code: $code", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          trailing: IconButton(
+            icon: const Icon(Icons.exit_to_app, color: Colors.redAccent, size: 20),
+            onPressed: () => _leaveHousehold(householdId),
+          ),
+        );
+      },
     );
+  }
+
+  Widget _buildProfileHeader(user) {
+    return Row(
+      children: [
+        CircleAvatar(radius: 35, backgroundColor: Colors.blue.withOpacity(0.1), child: Text(user?.displayName?.substring(0,1).toUpperCase() ?? "U", style: const TextStyle(fontSize: 24, color: Colors.blue, fontWeight: FontWeight.bold))),
+        const SizedBox(width: 15),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(user?.displayName ?? "User", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text(user?.email ?? "", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        ]),
+      ],
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity, height: 50,
+      child: OutlinedButton(
+        onPressed: () async { await authService.value.signOut(); Navigator.pop(context); },
+        style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+        child: const Text("Log Out", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Padding(padding: const EdgeInsets.only(left: 4, bottom: 10), child: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)));
   }
 
   Widget _buildSettingsGroup(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A242E),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(children: children),
-    );
+    return Container(decoration: BoxDecoration(color: const Color(0xFF1A242E), borderRadius: BorderRadius.circular(20)), child: Column(children: children));
   }
 
-  Widget _buildListTile(IconData icon, String title, {String? subtitle, String? trailingText, bool showArrow = false, bool isSyncStatus = false, required Color iconBgColor}) {
+  Widget _buildListTile(IconData icon, String title, {required Color iconBgColor}) {
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15)),
-      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)) : null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isSyncStatus) ...[
-            const Icon(Icons.circle, color: Colors.cyanAccent, size: 8),
-            const SizedBox(width: 8),
-          ],
-          if (trailingText != null) 
-            Text(trailingText, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          if (showArrow) 
-            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
-        ],
-      ),
+      leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 20)),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white10, size: 14),
     );
   }
 
   Widget _buildSwitchTile(IconData icon, String title, bool value, Function(bool) onChanged, {required Color iconBgColor}) {
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15)),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.blue,
-        activeTrackColor: Colors.blue.withOpacity(0.3),
-        inactiveTrackColor: Colors.grey.withOpacity(0.3),
-      ),
+      leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: iconBgColor, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 20)),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      trailing: Switch(value: value, onChanged: onChanged, activeColor: Colors.blue),
     );
   }
 }
