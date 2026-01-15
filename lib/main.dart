@@ -30,7 +30,6 @@ class GroceryApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0F1720),
         primaryColor: Colors.blue,
       ),
-      // AuthWrapper listens to login state automatically
       home: StreamBuilder(
         stream: authService.value.authStateChanges,
         builder: (context, snapshot) {

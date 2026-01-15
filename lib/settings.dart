@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Required for password/email logic
+import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_service.dart';
 import 'dart:math';
 
@@ -16,7 +16,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool hapticFeedback = true;
   bool _isLoading = false;
 
-  // --- 1. COMPREHENSIVE PROFILE EDIT LOGIC ---
   void _showEditProfileDialog(Map<String, dynamic> userData) {
     final user = authService.value.currentUser;
     final TextEditingController nameController = TextEditingController(text: userData['displayName'] ?? "");
@@ -51,22 +50,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                 onPressed: () async {
                   try {
-                    // Update Username
                     if (nameController.text.trim() != userData['displayName']) {
                       await user?.updateDisplayName(nameController.text.trim());
                     }
 
-                    // Update Email in Firebase Auth
                     if (emailController.text.trim() != user?.email) {
                       await user?.updateEmail(emailController.text.trim());
                     }
 
-                    // Update Password in Firebase Auth
                     if (passwordController.text.isNotEmpty) {
                       await user?.updatePassword(passwordController.text.trim());
                     }
 
-                    // Sync changes to Firestore - This triggers instant UI update in StreamBuilders
                     await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
                       'displayName': nameController.text.trim(),
                       'email': emailController.text.trim(),
@@ -106,7 +101,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // --- HOUSEHOLD LOGIC ---
   void _showJoinHouseholdDialog() {
     final TextEditingController codeController = TextEditingController();
     showDialog(

@@ -26,7 +26,6 @@ class _RegisterPageState extends State<RegisterPage> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        // 1. Create Auth Account
         await authService.value.createAccount(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
@@ -39,7 +38,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
         final user = authService.value.currentUser;
 if (user != null) {
-  String targetHouseholdId = ""; // Empty means they haven't joined yet
+  String targetHouseholdId = ""; 
   
   if (_inviteCodeController.text.trim().isNotEmpty) {
     final code = _inviteCodeController.text.trim();
@@ -52,7 +51,7 @@ if (user != null) {
     if (householdQuery.docs.isNotEmpty) {
       targetHouseholdId = householdQuery.docs.first.id;
     } else {
-      // If code is wrong, show error and stop
+
       throw Exception("Invalid Invite Code");
     }
   }
@@ -60,7 +59,7 @@ if (user != null) {
   await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
     'email': user.email,
     'displayName': _usernameController.text.trim(),
-    'householdId': targetHouseholdId, // Can be empty string now
+    'householdId': targetHouseholdId, 
     'createdAt': FieldValue.serverTimestamp(),
   });
 }
@@ -145,7 +144,6 @@ if (user != null) {
                 ),
                 const SizedBox(height: 15),
 
-                // NEW: Invite Code Field
                 _buildTextField(
                   controller: _inviteCodeController,
                   hint: "Invite Code (Optional)",

@@ -15,7 +15,7 @@ class GroceryListPage extends StatefulWidget {
 }
 
 class _GroceryListPageState extends State<GroceryListPage> {
-  // --- Navigation & Firestore State ---
+
   late CollectionReference _firestore;
   String? _selectedHouseholdId;
   String? _selectedHouseholdName;
@@ -24,7 +24,6 @@ class _GroceryListPageState extends State<GroceryListPage> {
   final TextEditingController _itemController = TextEditingController();
   int _quantity = 1;
 
-  // Monitor Sync Status & Network Connection
   Stream<bool> _getSyncStatus() {
     return Connectivity().onConnectivityChanged.asyncMap((results) async {
       final hasNetwork = results.contains(ConnectivityResult.mobile) || 
@@ -61,8 +60,6 @@ class _GroceryListPageState extends State<GroceryListPage> {
       debugPrint("Refresh failed: $e");
     }
   }
-
-  // --- HOUSEHOLD ACTIONS ---
 
   void _showCreateHouseholdDialog() {
     final TextEditingController nameController = TextEditingController();
@@ -188,8 +185,6 @@ class _GroceryListPageState extends State<GroceryListPage> {
 
     if (mounted) setState(() => _isInitializing = false);
   }
-
-  // --- ITEM LOGIC ---
 
   void _addItem() async {
     if (_itemController.text.trim().isNotEmpty) {
@@ -355,7 +350,6 @@ class _GroceryListPageState extends State<GroceryListPage> {
     );
   }
 
-  // --- PICKER VIEW WITH PERSISTENT ACTION BAR ---
   Widget _buildHouseholdPickerView() {
     final userId = authService.value.currentUser?.uid;
     return StreamBuilder<DocumentSnapshot>(
@@ -378,7 +372,7 @@ class _GroceryListPageState extends State<GroceryListPage> {
                     itemBuilder: (context, index) => _buildHouseholdCard(ids[index]),
                   ),
             ),
-            // PERSISTENT MINIMALIST ACTION BAR
+
             _buildPersistentActionBar(),
           ],
         );
@@ -469,7 +463,6 @@ class _GroceryListPageState extends State<GroceryListPage> {
     );
   }
 
-  // --- LIST VIEW UI ---
 
   Widget _buildGroceryListView() {
     return Column(

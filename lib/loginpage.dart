@@ -36,14 +36,13 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F1720),
-      // Use SingleChildScrollView to prevent keyboard overflow
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 80), // Top padding
+              const SizedBox(height: 80), 
               const Text(
                 "🛒 GROCERIES",
                 style: TextStyle(
@@ -58,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
 
               Image.asset(
                 'assets/carticon.png',
-                height: 200, // Slightly reduced height to fit better on smaller screens
+                height: 200, 
                 width: 200,
                 fit: BoxFit.contain,
               ),
@@ -90,7 +89,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 40), 
 
-              // Email Field
               TextField(
                 controller: _emailController,
                 style: const TextStyle(color: Colors.white),
@@ -108,7 +106,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 12),
               
-              // Password Field
               TextField(
                 controller: _passwordController,
                 obscureText: true,
@@ -128,7 +125,6 @@ class _LoginPageState extends State<LoginPage> {
               
               const SizedBox(height: 25),
               
-              // Start Button
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -161,7 +157,7 @@ class _LoginPageState extends State<LoginPage> {
                   style: TextStyle(color: Colors.grey),
                 ),
               ),
-              const SizedBox(height: 40), // Bottom padding
+              const SizedBox(height: 40),
             ],
           ),
         ),
